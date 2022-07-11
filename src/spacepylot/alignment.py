@@ -58,7 +58,7 @@ class HomoMatrix(object):
         self.reverse_order = reverse_order
 
     def __repr__(self):
-          return 'HomoMatrix(\n%s)' % str(self.homo_matrix)
+        return 'HomoMatrix(\n%s)' % str(self.homo_matrix)
 
     def __str__(self):
         return self.__repr__()
