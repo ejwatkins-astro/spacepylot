@@ -173,9 +173,9 @@ op_plot.illistrate_vector_fields()
 If you want to find translation offsets only, with no rotational offsets found, we can change the homographic template used in \`op.get\_iterate\_translation_rotation\`
 
 ```python
-import spacepylot.translational_transform as tt
+from spacepylot.alignment_utilities import TranslationTransform
 
 ...
 op = align.AlignOpticalFlow.from_fits(prealign_path, reference_path, guess_translation=inital_guess_shifts)
-op.get_iterate_translation_rotation(homography_method=tt.TranslationTransform)
+op.get_iterate_translation_rotation(homography_method=TranslationTransform)
 ```
