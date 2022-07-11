@@ -58,7 +58,7 @@ class HomoMatrix(object):
         self.reverse_order = reverse_order
 
     def __repr__(self):
-          return 'HomoMatrix(\n%s)' % str(self.homo_matrix)
+        return 'HomoMatrix(\n%s)' % str(self.homo_matrix)
 
     def __str__(self):
         return self.__repr__()
@@ -103,11 +103,9 @@ class HomoMatrix(object):
         HomoMatrix with the self @ B multiplication
 
         """
-        newhm = cp.copy(self)
         if isinstance(b, HomoMatrix):
             b = b.homo_matrix
         return HomoMatrix(self.homo_matrix @ b, self.reverse_order)
-
 
     def __rmatmul__(self, a):
         """Returns a new HomoMatrix using the multiplication
@@ -277,7 +275,7 @@ class AlignmentBase(object):
         filename_prealign : str
             Filepath to the prealign fits file image.
         filename_reference : str
-            Filepath gh repo clone emsellem/spacepylotto the reference fits file image.
+            Filepath to the reference fits file image.
         hdu_index_prealign : int or str, optional
             Index or dict name for prealign image if the hdu object has
             multiple objects. The default is 0.
@@ -575,9 +573,9 @@ class AlignTranslationPCC(AlignmentCrossCorrelate):
         prealign_filter_transformed = self.update_prealign()
         for i in range(split_image):
             for j in range(split_image):
-                split_prealign, split_reference = self._get_split_images(prealign_filter_transformed, 
+                split_prealign, split_reference = self._get_split_images(prealign_filter_transformed,
                                                                          split_image, (i, j))
-                shifts = self.fft_phase_correlation(split_prealign, split_reference, resolution, 
+                shifts = self.fft_phase_correlation(split_prealign, split_reference, resolution,
                                                     **kwargs)
 
                 # Ignores pixels translations that are too large
@@ -743,9 +741,9 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
 #                  guess_rotation=None, verbose=True, header=None,
 #                  transform_method=None, transform_method_kwargs=None,
 #                  filter_params=None):
-#         super().__init__(prealign, reference, convolve_prealign, 
-#                          convolve_reference, guess_translation, 
-#                          guess_rotation, verbose, header, 
+#         super().__init__(prealign, reference, convolve_prealign,
+#                          convolve_reference, guess_translation,
+#                          guess_rotation, verbose, header,
 #                          transform_method, transform_method_kwargs, filter_params)
 
     def optical_flow(self, oflow_test=False, **kwargs):
@@ -818,7 +816,7 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
 
     def get_translation_rotation(self, num_per_dimension=50,
                                  homography_method=transform.EuclideanTransform,
-                                 reverse_order=False, 
+                                 reverse_order=False,
                                  oflow_test=False, **kwargs):
         """Works out the translation and rotation using homography once
 
@@ -874,9 +872,9 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
                                        **kwargs)
 
         # Printing and updating
-        self.print.get_rotation(self.homography_matrix.rotation_deg, 
+        self.print.get_rotation(self.homography_matrix.rotation_deg,
                                 self.matrix_transform.rotation_deg)
-        self.print.get_translation(self.homography_matrix.translation, 
+        self.print.get_translation(self.homography_matrix.translation,
                                    self.matrix_transform.translation)
 
         self._update_transformation_matrix(new_homography_matrix=self.homography_matrix)
