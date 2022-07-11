@@ -77,7 +77,7 @@ op.get_iterate_translation_rotation()
 Iterating the alignment multiple times tends to make the alignment better.
 
 ```python
-shifts_op, rotation_op = op.get_iterate_translation_rotation(5)
+op.get_iterate_translation_rotation(5)
 ```
 
 ### Print alignment
