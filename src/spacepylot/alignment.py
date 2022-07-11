@@ -103,7 +103,6 @@ class HomoMatrix(object):
         HomoMatrix with the self @ B multiplication
 
         """
-        newhm = cp.copy(self)
         if isinstance(b, HomoMatrix):
             b = b.homo_matrix
         return HomoMatrix(self.homo_matrix @ b, self.reverse_order)
