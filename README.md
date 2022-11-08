@@ -179,3 +179,68 @@ from spacepylot.alignment_utilities import TranslationTransform
 op = align.AlignOpticalFlow.from_fits(prealign_path, reference_path, guess_translation=inital_guess_shifts)
 op.get_iterate_translation_rotation(homography_method=TranslationTransform)
 ```
+
+## Comparing solutions
+
+If you have two solutions, to find out whih one is better, import:
+```python
+
+import spacepylot.alignment_check as ac
+```
+
+The method works by applying both solutions to the prealign image and it then runs optical flow on them compared to the reference image. The soluion with the largest offset is the worst fit. This method therefore assumes that optical flow provides the "correct" solution. If optical flow fails, you cannot use this method to quantify which solution is better.
+
+To run the comparison run these lines for the two solutions:
+
+```python
+
+prealign_path = 'your//path//here'
+reference_path = 'your//path//here'
+
+mo = ac.MagnitudeOffset.from_fits(prealign_path, reference_path, solution_1, solution_2)
+```
+
+The solutions can be entered using:
+- List item a homography matrix;
+- List of the rotation and translation `[rotation, [x_offset, y_offset]]`
+
+```python
+
+prealign_path = 'your//path//here'
+reference_path = 'your//path//here'
+
+manual_offsets = [0.2 [2.8, -1.5]]
+
+op = align.AlignOpticalFlow.from_fits(prealign_path, reference_path)
+op.get_iterate_translation_rotation(5)
+
+mo = ac.MagnitudeOffset.from_fits(prealign_path, reference_path, manual_offsets, op.matrix_transform) 
+```
+
+If one of the solutions was just found using optical flow, you can also initalise using its object and the comparison solutions:
+```python
+
+...
+
+op = align.AlignOpticalFlow.from_fits(prealign_path, reference_path)
+op.get_iterate_translation_rotation(5)
+
+manual_offsets = [0.2 [2.8, -1.5]]
+mo = ac.MagnitudeOffset.from_op_align_object(op, manual_offsets)
+```
+Therefore solution 2 is the `op` solution.
+
+To compare the two solutions, you can plot the histogram distribution of vector magnitude residuals, and you can compare the residual vector fields and their magnitude on a 2d map. 
+```python
+...
+
+mo.plot_hist()
+mo.plot_vector_fields()
+```
+
+To see the average and data spread (16th-84th percentiles, they are provided in a dictionary
+
+```python
+...
+stats_manual_dict, stats_auto_dict = mo.get_statistics()
+```
