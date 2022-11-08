@@ -225,7 +225,7 @@ If one of the solutions was just found using optical flow, you can also initalis
 op = align.AlignOpticalFlow.from_fits(prealign_path, reference_path)
 op.get_iterate_translation_rotation(5)
 
-manual_offsets = [0.2 [2.8, -1.5]]
+manual_offsets = [0.2, [2.8, -1.5]]
 mo = ac.MagnitudeOffset.from_op_align_object(op, manual_offsets)
 ```
 Therefore solution 2 is the `op` solution.
