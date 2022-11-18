@@ -267,7 +267,7 @@ def get_flux_range(data, low=2, high=98, border=25):
     return lperc, hperc
 
 
-def make_contours(comp_image, ref_image, ax=None, title='', 
+def get_ax_contours(comp_image, ref_image, ax=None, title='', 
                   **kwargs):
     """Show the contours for two images
 
@@ -317,7 +317,25 @@ def make_contours(comp_image, ref_image, ax=None, title='',
     return ax
 
 
-def make_division(comp_image, ref_image, ax=None, title='',
+def make_division(comp_image, ref_image):
+    """Derive the division between two images
+
+    Parameters
+    ----------
+    comp_image : 2darray
+        2d array containing the red channel image
+    ref_image : 2d array
+         2d array containing the blue/cyan channel image.
+
+    Returns
+    -------
+    division: 2darray
+    """
+
+    return 100. * (ref_image - comp_image) / (comp_image + 1.e-12)
+
+
+def get_ax_division(comp_image, ref_image, ax=None, title='',
                   percentage=5):
     """Show the division between the two images
 
@@ -343,7 +361,7 @@ def make_division(comp_image, ref_image, ax=None, title='',
         ax = plt.gca()
 
     # Show the percentage division
-    ratio = 100. * (ref_image - comp_image) / (comp_image + 1.e-12)
+    ratio = make_division(comp_image, ref_image)
     im = ax.imshow(ratio, vmin=-percentage, vmax=percentage)
     _ = plt.colorbar(im, ax=ax, shrink=0.8)
 
@@ -633,7 +651,7 @@ class AlignmentPlotting:
         return cls(data_prealign, data_reference, rotation, shifts,
                    header, v, u, rotation_fit)
 
-    def red_blue_before_after(self):
+    def red_blue_before_after(self, normalise=True):
         """Plots the alignment before and after applying the offsets with
         red showing the prealign/align image and cyan showing the reference image
         Image is well aligned if the aligned image is grey scale with no visible
@@ -647,9 +665,16 @@ class AlignmentPlotting:
         ax1 : matplotlib.pyplot ax
             Matplotlib axis object for the aligned image
         """
+        if normalise:
+            poly = get_image_norm_poly(self.aligned, self.reference)
+            prealign = my_linear_model(poly.beta, self.prealign)
+            aligned = my_linear_model(poly.beta, self.prealign)
+        else:
+            prealign = self.prealign * 1.0
+            aligned = self.prealign * 1.0
 
-        rgb_before = make_red_blue_overlay(self.prealign, self.reference)
-        rgb_after = make_red_blue_overlay(self.aligned, self.reference)
+        rgb_before = make_red_blue_overlay(prealign, self.reference)
+        rgb_after = make_red_blue_overlay(aligned, self.reference)
 
         fig, axs = initialise_fig_ax(
             fig_name='red-blue',
@@ -682,26 +707,36 @@ class AlignmentPlotting:
             Matplotlib axis object for the contours
         """
 
+        if normalise:
+            poly = get_image_norm_poly(self.aligned, self.reference)
+            aligned = my_linear_model(poly.beta, self.prealign)
+        else:
+            aligned = self.prealign * 1.0
+
+        before = prealign - self.reference
+        after = aligned - self.reference
+        
         fig, axs = initialise_fig_ax(fig_name='divcontours',
                                      fig_size=self.fig_size,
                                      header=self.header,
                                      grid=[1, 2])
 
-        ax0 = make_division(self.aligned, self.reference, ax=axs[0], 
-                            title=titles['after']['division'],
-                            percentage=percentage)
-        ax1 = make_contours(self.aligned, self.reference, ax=axs[1], 
-                            title=titles['after']['contours'],
-                            nlevels=nlevels, levels=levels)
+        ax0 = get_ax_division(aligned, self.reference, ax=axs[0], 
+                              title=titles['after']['division'],
+                              percentage=percentage)
+        ax1 = get_ax_contours(aligned, self.reference, ax=axs[1], 
+                              title=titles['after']['contours'],
+                              nlevels=nlevels, levels=levels)
 
         plt.subplots_adjust(**self.fig_params)
 
         return ax0, ax1
 
-    def before_after(self, vmin_perc=1, vmax_perc=99, **kwargs):
+    def before_after_division(self, perc_level=5, normalise=True, **kwargs):
         """
-        Plots the alignment before and after applying the offsets by subtracting
+        Plots the alignment before and after applying the offsets by dividing
         the reference image from the prealigned/aligned image
+        If you wish a difference, use the before_after function
 
         Parameters
         ----------
@@ -711,6 +746,9 @@ class AlignmentPlotting:
         vmax_perc : float, optional
             Maximum percentile value of the intensity calculated on the
             prealign-reference. The default is 99.
+        normalise: bool
+            If True will apply a linear normalisation (normalisation factor
+            and background) to the input prealigned and aligned images
         **kwargs : kwargs
             Kwargs for adjusting the imshow image.
 
@@ -723,8 +761,77 @@ class AlignmentPlotting:
 
         """
 
-        before = self.prealign - self.reference
-        after = self.aligned - self.reference
+        if normalise:
+            poly = get_image_norm_poly(self.aligned, self.reference)
+            prealign = my_linear_model(poly.beta, self.prealign)
+            aligned = my_linear_model(poly.beta, self.prealign)
+        else:
+            prealign = self.prealign * 1.0
+            aligned = self.prealign * 1.0
+
+        before = make_division(prealign, self.reference)
+        after = make_division(aligned, self.reference)
+
+        fig, axs = initialise_fig_ax(
+            fig_name='prealign-vs-align-division',
+            fig_size=self.fig_size,
+            header=self.header,
+            grid=[1, 2]
+        )
+
+        ax0, vmin, vmax = plot_image(before, axs[0], title=titles['before']['prealign-vs-align-division'],
+                                     vmin_perc=-perc_level, vmax_perc=perc_level,
+                                     return_colourange=True, **kwargs)
+        ax1 = plot_image(after, axs[1],
+                         title=titles['after']['prealign-vs-align-division']
+                         % (*self.shifts, self.rotation),
+                         vmin=vmin, vmax=vmax)
+
+        fT.remove_overlapping_tickers_for_horizontal_subplots(1, *axs)
+        [fT.minor_tickers(ax) for ax in axs]
+        plt.subplots_adjust(**self.fig_params)
+
+        return ax0, ax1
+
+
+    def before_after(self, vmin_perc=1, vmax_perc=99, normalise=True, **kwargs):
+        """
+        Plots the alignment before and after applying the offsets by subtracting
+        the reference image from the prealigned/aligned image
+
+        Parameters
+        ----------
+        vmin_perc : float, optional
+            Minimum percentile value of the intensity calculated on the
+            prealign-reference. The default is 1.
+        vmax_perc : float, optional
+            Maximum percentile value of the intensity calculated on the
+            prealign-reference. The default is 99.
+        normalise: bool
+            If True will apply a linear normalisation (normalisation factor
+            and background) to the input prealigned and aligned images
+        **kwargs : kwargs
+            Kwargs for adjusting the imshow image.
+
+        Returns
+        -------
+        ax0 : matplotlib.pyplot ax
+            Matplotlib axis object for the prealigned image
+        ax1 : matplotlib.pyplot ax
+            Matplotlib axis object for the aligned image
+
+        """
+
+        if normalise:
+            poly = get_image_norm_poly(self.aligned, self.reference)
+            prealign = my_linear_model(poly.beta, self.prealign)
+            aligned = my_linear_model(poly.beta, self.prealign)
+        else:
+            prealign = self.prealign * 1.0
+            aligned = self.prealign * 1.0
+
+        before = prealign - self.reference
+        after = aligned - self.reference
 
         fig, axs = initialise_fig_ax(
             fig_name='prealign-vs-align',

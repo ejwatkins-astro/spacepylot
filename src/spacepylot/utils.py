@@ -9,10 +9,18 @@ __copyright__ = "Elizabeth Watkins"
 __license__ = "MIT License"
 __contact__ = "<liz@email"
 
+# General imports from numpy and copy
 import numpy as np
 import copy as cp
 
+# ODR import
+from scipy.odr import ODR, Model, RealData
+
+# Skimage
 from skimage import exposure
+
+# robust stats
+from astropy.stats import mad_std, sigma_clip
 
 # Internal package calls
 from .params import pcc_params
@@ -247,6 +255,179 @@ def _remove_image_border(image, border):
     image_border_removed = image[border:-border, border:-border]
 
     return image_border_removed
+
+
+def chunk_stats(list_arrays, chunk_size=15):
+    """Cut the datasets in 2d chunks and take the median
+    Return the set of medians for all chunks.
+
+    Parameters
+    ----------
+    list_arrays : list of np.arrays
+        List of arrays with the same sizes/shapes
+    chunk_size : int
+        number of pixel (one D of a 2D chunk)
+        of the chunk to consider (Default value = 15)
+
+    Returns
+    -------
+    median, standard: 2 arrays of the medians and standard deviations
+        for the given datasets analysed in chunks.
+
+    """
+
+    narrays = len(list_arrays)
+
+    nchunk_x = np.int(list_arrays[0].shape[0] // chunk_size - 1)
+    nchunk_y = np.int(list_arrays[0].shape[1] // chunk_size - 1)
+    # Check that all arrays have the same size
+    med_array = np.zeros((narrays, nchunk_x * nchunk_y), dtype=np.float64)
+    std_array = np.zeros_like(med_array)
+
+    if not all([d.size for d in list_arrays]):
+        upipe.print_error("Datasets are not of the same "
+                          "size in median_compare")
+    else:
+        for i in range(0, nchunk_x):
+            for j in range(0, nchunk_y):
+                for k in range(narrays):
+                    # Taking the median of all arrays
+                    med_array[k, i * nchunk_y + j] = np.nanmedian(
+                        list_arrays[k][i * chunk_size:(i + 1) * chunk_size,
+                        j * chunk_size:(j + 1) * chunk_size])
+                    # Taking the std deviation of all arrays
+                    std_array[k, i * nchunk_y + j] = mad_std(
+                        list_arrays[k][i * chunk_size:(i + 1) * chunk_size,
+                        j * chunk_size:(j + 1) * chunk_size], ignore_nan=True)
+
+    # Cleaning in case of Nan
+    med_array = np.nan_to_num(med_array)
+    std_array = np.nan_to_num(std_array)
+    return med_array, std_array
+
+
+def get_image_norm_poly(array1, array2, chunk_size=15, threshold1=0.,
+                        threshold2=0, percentiles=(0., 100.), sigclip=0):
+    """Find the normalisation factor between two arrays.
+
+    Including the background and slope. This uses the function
+    regress_odr which is included in align_pipe.py and itself
+    makes use of ODR in scipy.odr.ODR.
+
+    Parameters
+    ----------
+    array1 : 2D np.array
+    array2 : 2D np.array
+        2 arrays (2D) of identical shapes
+
+    chunk_size : int
+        Default value = 15
+    threshold1 : float
+        Lower threshold for array1 (Default value = 0.)
+    threshold2 : float
+        Lower threshold for array2 (Default value = 0)
+    percentiles : list of 2 floats
+        Percentiles (Default value = [0., 100.])
+    sigclip : float
+        Sigma clipping factor (Default value = 0)
+
+    Returns
+    -------
+    result: python structure
+        Result of the regression (ODR)
+    """
+
+    # proceeds by splitting the data arrays in chunks of chunk_size
+    med, std = chunk_stats([array1, array2], chunk_size=chunk_size)
+
+    # Selecting where data is supposed to be good
+    pos = (med[0] > threshold1) & (std[0] > 0.) & (std[1] > 0.) & (med[1] > threshold2)
+    # Guess the slope from this selection
+    guess_slope = 1.0
+
+    # Doing the regression itself
+    result = regress_odr(x=med[0][pos], y=med[1][pos], sx=std[0][pos],
+                         sy=std[1][pos], beta0=[0., guess_slope],
+                         percentiles=percentiles, sigclip=sigclip)
+    result.med = med
+    result.std = std
+    result.selection = pos
+    return result
+
+
+def my_linear_model(B, x):
+    """Linear function for the regression.
+     
+    Parameters
+    ----------
+    B : 1D np.array of 2 floats
+        Input 1D polynomial parameters (0=constant, 1=slope)
+    x : np.array
+        Array which will be multiplied by the polynomial
+    
+    Returns
+    -------
+        An array = B[1] * (x + B[0])
+    """
+    return B[1] * (x + B[0])
+
+
+def regress_odr(x, y, sx, sy, beta0=(0., 1.),
+                percentiles=(0., 100.), sigclip=0.0):
+    """Return an ODR linear regression using scipy.odr.ODR
+
+    Parameters
+    ----------
+    x : numpy.array 
+    y : numpy.array
+        Input array with signal
+    sx : numpy.array 
+    sy : numpy.array
+        Input array (as x,y) with standard deviations
+    beta0 : list or tuple of 2 floats
+        Initial guess for the constant and slope
+    percentiles: tuple or list of 2 floats
+        Two numbers providing the min and max percentiles
+    sigclip: float
+        sigma factor for sigma clipping. If 0, no sigma clipping
+        is performed
+
+    Returns
+    -------
+    result: result of the ODR analysis
+
+    """
+    # Percentiles
+    xrav = x.ravel()
+    if len(xrav) > 0:
+        percentiles = np.percentile(xrav, percentiles)
+        sel = (xrav >= percentiles[0]) & (xrav <= percentiles[1])
+    else:
+        sel = np.abs(xrav) > 0
+
+    xsel, ysel = xrav[sel], y.ravel()[sel]
+    sxsel, sysel = sx.ravel()[sel], sy.ravel()[sel]
+    linear = Model(my_linear_model)
+
+    # We introduce the minimum of x to avoid negative values
+    minx = np.min(xsel)
+    mydata = RealData(xsel - minx, ysel, sx=sxsel, sy=sysel)
+    result = ODR(mydata, linear, beta0=beta0)
+
+    if sigclip > 0:
+        diff = ysel - my_linear_model([result.beta[0], result.beta[1]], xsel)
+        filtered = sigma_clip(diff, sigma=sigclip)
+        xnsel, ynsel = xsel[~filtered.mask], ysel[~filtered.mask]
+        sxnsel, synsel = sxsel[~filtered.mask], sysel[~filtered.mask]
+        clipdata = RealData(xnsel, ynsel, sx=sxnsel, sy=synsel)
+        result = ODR(clipdata, linear, beta0=beta0)
+
+    # Running the ODR
+    r = result.run()
+    # Offset from the min of x
+    r.beta[0] -= minx
+
+    return r
 
 
 def filter_image_for_analysis(image, histogram_equalisation=False,
