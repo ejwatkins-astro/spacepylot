@@ -46,8 +46,9 @@ class VerbosePrints:
         self.verbose = verbose
         if self.verbose:
             print('Verbose mode on')
-        else:
-            print('Verbose mode off')
+        # No need to say "verbose is off" if it is off. 
+        # else: 
+        #     print("Verbose mode off")
 
     def default_filter_params(self):
         """
