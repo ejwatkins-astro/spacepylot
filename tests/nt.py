@@ -14,7 +14,7 @@ prealign_path = "/home/soft/python/spacepylot/src/spacepylot/data/prealign_ima.f
 op = align.AlignOpticalFlow.from_fits(prealign_path, ref_path, 
         guess_translation=shifts_op, guess_rotation=rotation_op, 
         convolve_prealign=convolve_prealign, verbose=True)
-shifts_op, rotation_op = op.get_translation_rotation(niter=1)
+op.get_iterate_translation_rotation(nruns_opticalflow=1)
 
 op_plot = pl.AlignmentPlotting.from_align_object(op)
 
