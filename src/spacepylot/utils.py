@@ -15,6 +15,7 @@ import copy as cp
 
 # ODR import
 from scipy.odr import ODR, Model, RealData
+import scipy.ndimage as ndi
 
 # Skimage
 from skimage import exposure
@@ -306,7 +307,7 @@ def chunk_stats(list_arrays, chunk_size=15):
     return med_array, std_array
 
 
-def get_image_norm_poly(array1, array2, chunk_size=15, threshold1=0.,
+def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
                         threshold2=0, percentiles=(0., 100.), sigclip=0):
     """Find the normalisation factor between two arrays.
 
@@ -428,6 +429,31 @@ def regress_odr(x, y, sx, sy, beta0=(0., 1.),
     r.beta[0] -= minx
 
     return r
+
+
+def filtermed_image(data, border=0, filter_size=2):
+    """Process image by removing the borders
+    and filtering it via a median filter
+     
+    Input
+    -----
+    data: 2d array
+        Array to be processed
+    border: int
+        Number of pixels to remove at each edge
+    filter_size: float
+        Size of the filtering (median)
+    
+    Returns
+    -------
+    cdata: 2d array
+        Processed array
+    """
+    # Omit the border pixels
+    if border > 0:
+        data = crop_data(data, border=border)
+
+    return ndi.filters.median_filter(data, filter_size)
 
 
 def filter_image_for_analysis(image, histogram_equalisation=False,
