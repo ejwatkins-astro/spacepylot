@@ -927,10 +927,14 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
             The recovered rotation, in degrees.
 
         """
-        print("Starting optical flow iterations ...")
+        if self.verbose:
+            print(f"Starting optical flow iterations...")
+
         for i in range(nruns_opticalflow):
-            print(f"Iteration #{nruns_opticalflow:02d}", end='\r')
+            if self.verbose:
+                print(f"Iteration #{nruns_opticalflow:02d}", end='\r')
             self.get_translation_rotation(num_per_dimension, homography_method,
                                           reverse_order,
                                           oflow_test=oflow_test, **kwargs)
-        print("\n Done")
+        if self.verbose:
+            print("\n Done")

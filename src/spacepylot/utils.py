@@ -40,7 +40,7 @@ class VerbosePrints:
 
     def __init__(self, verbose):
         """
-        Initalised the print statments
+        Initialised the print statements
 
         Parameters
         ----------
