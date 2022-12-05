@@ -8,7 +8,7 @@ Currently, the main method being used relies on optical flow, a routine for dete
 
 Currently, this package find both **translational offsets** and **rotational offsets**, but has an option to only search for translational offsets only. You can also provide a guess solution (or use one of the methods here to provide a good guess solution) if you want.
 
-With the default settings, a 250x250 images takes ~5s. T
+With the default settings, a 250x250 images takes ~5s.
 
 ### Additional packages needed:
 
