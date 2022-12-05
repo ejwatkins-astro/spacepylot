@@ -33,7 +33,7 @@ With the default settings, a 250x250 images takes ~5s. T
 To use this package first import it:
 
 ```python
-import spaceplot.alignment as align
+import spacepylot.alignment as align
 ```
 
 ## Running the code
@@ -140,7 +140,7 @@ op_plot.before_after()
 We can also look at the vectors that were found before, and after removing the mean translation (not rotation). This helps demonstrate if a rotation offset is real as the vectors with curl around. The colourmap then indicates the vector magnitude
 
 ```python
-op_plot.illistrate_vector_fields()
+op_plot.illustrate_vector_fields()
 ```
 
 ## Full script all together
@@ -165,7 +165,7 @@ op_plot = pl.AlignmentPlotting.from_align_object(op)
 
 op_plot.red_blue_before_after()
 op_plot.before_after()
-op_plot.illistrate_vector_fields()
+op_plot.illustrate_vector_fields()
 ```
 
 ## Translation only
