@@ -673,7 +673,7 @@ class AlignHomography(object):
                                   method=transform.EuclideanTransform,
                                   reverse_order=None,
                                   min_samples=3, residual_threshold=0.5,
-                                  max_trials=1000, **kwargs):
+                                  max_trials=1000, random_state=1, **kwargs):
         """Performs a fit to estimate the homography matrix that represents the grid
         transformation. Uses ransac to robustly eliminate vector outliers that
         something such as optical flow, or other feature extracting methods
@@ -715,7 +715,7 @@ class AlignHomography(object):
         self.model_robust, inliers = ransac((original_xy, transformed_xy), method,
                                             min_samples=min_samples,
                                             residual_threshold=residual_threshold,
-                                            max_trials=max_trials, **kwargs)
+                                            max_trials=max_trials, random_state=random_state, **kwargs)
 
         homographic_solution = np.linalg.inv(self.model_robust.params)
         homographic_solution[1, 0] = -homographic_solution[1, 0]
