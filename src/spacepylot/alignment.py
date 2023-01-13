@@ -184,7 +184,7 @@ class AlignmentBase(object):
         verbose : bool, optional
             Tells the class whether to print out information for the user.
             The default is True.
-        header : header: astropy.io.Header.header
+        header : astropy.io.Header.header
             Dictionary-like object containing the world coordinate reference.
             The default is None.
         transform_method: function
