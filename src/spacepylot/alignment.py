@@ -240,11 +240,13 @@ class AlignmentBase(object):
                 self.transform_method_kwargs = transform_method_kwargs
         else:
             if self.header is not None:
-                print("INFO = Using *reproject* to transform images")
+                if self.verbose:
+                    print("INFO = Using *reproject* to transform images")
                 self.transform_method = self.apply_transform_using_reproject
                 self.transform_method_kwargs = {}
             else:
-                print("INFO = Using *ndimage* to transform images")
+                if self.verbose:
+                    print("INFO = Using *ndimage* to transform images")
                 self.transform_method = self.apply_transform
                 self.transform_method_kwargs = {}
 
@@ -769,7 +771,8 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
         """
         if oflow_test:
             kwargs_of = {}
-            print("WARNING: Optical Flow will run with test parameters values")
+            if self.verbose:
+                print("WARNING: Optical Flow will run with test parameters values")
         else:
             kwargs_of = default_kw_opticalflow
             # Overwriting the keywords in case those are provided
@@ -924,10 +927,14 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
             The recovered rotation, in degrees.
 
         """
-        print("Starting optical flow iterations ...")
+        if self.verbose:
+            print(f"Starting optical flow iterations...")
+
         for i in range(nruns_opticalflow):
-            print(f"Iteration #{nruns_opticalflow:02d}", end='\r')
+            if self.verbose:
+                print(f"Iteration #{nruns_opticalflow:02d}", end='\r')
             self.get_translation_rotation(num_per_dimension, homography_method,
                                           reverse_order,
                                           oflow_test=oflow_test, **kwargs)
-        print("\n Done")
+        if self.verbose:
+            print("\n Done")
