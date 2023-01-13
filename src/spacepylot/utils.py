@@ -55,8 +55,8 @@ class VerbosePrints:
         self.verbose = verbose
         if self.verbose:
             print('Verbose mode on')
-        # No need to say "verbose is off" if it is off. 
-        # else: 
+        # No need to say "verbose is off" if it is off.
+        # else:
         #     print("Verbose mode off")
 
     def default_filter_params(self):
@@ -342,7 +342,12 @@ def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
     med, std = chunk_stats([array1, array2], chunk_size=chunk_size)
 
     # Selecting where data is supposed to be good
+    if threshold1 is None:
+        threshold1 = 0.
+    if threshold2 is None:
+        threshold2 = 0.
     pos = (med[0] > threshold1) & (std[0] > 0.) & (std[1] > 0.) & (med[1] > threshold2)
+
     # Guess the slope from this selection
     guess_slope = 1.0
 
@@ -358,14 +363,14 @@ def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
 
 def my_linear_model(B, x):
     """Linear function for the regression.
-     
+
     Parameters
     ----------
     B : 1D np.array of 2 floats
         Input 1D polynomial parameters (0=constant, 1=slope)
     x : np.array
         Array which will be multiplied by the polynomial
-    
+
     Returns
     -------
         An array = B[1] * (x + B[0])
@@ -379,10 +384,10 @@ def regress_odr(x, y, sx, sy, beta0=(0., 1.),
 
     Parameters
     ----------
-    x : numpy.array 
+    x : numpy.array
     y : numpy.array
         Input array with signal
-    sx : numpy.array 
+    sx : numpy.array
     sy : numpy.array
         Input array (as x,y) with standard deviations
     beta0 : list or tuple of 2 floats
@@ -434,7 +439,7 @@ def regress_odr(x, y, sx, sy, beta0=(0., 1.),
 def filtermed_image(data, border=0, filter_size=2):
     """Process image by removing the borders
     and filtering it via a median filter
-     
+
     Input
     -----
     data: 2d array
@@ -443,7 +448,7 @@ def filtermed_image(data, border=0, filter_size=2):
         Number of pixels to remove at each edge
     filter_size: float
         Size of the filtering (median)
-    
+
     Returns
     -------
     cdata: 2d array
