@@ -522,7 +522,7 @@ class MagnitudeOffset(object):
             convolve_prealign=convolve_prealign, convolve_reference=convolve_reference,
             hdu_index_prealign=hdu_index_prealign, hdu_index_reference=hdu_index_reference,
             guess_translation=guess_translation, guess_rotation=guess_rotation, verbose=verbose,
-            transform_method=transform_method, transform_method_kwargs=transform_method_kwargs, 
+            transform_method=transform_method, transform_method_kwargs=transform_method_kwargs,
             filter_params=filter_params)
 
         return MagnitudeOffset.from_op_align_object(op, compare_param_1,
@@ -689,3 +689,6 @@ class MagnitudeOffset(object):
                               num_per_dimension=num_per_dimension)
 
         return fig, self.axs, cbar
+
+if __name__ == "__main__":
+    pass
