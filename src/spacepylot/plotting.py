@@ -23,7 +23,6 @@ from . import alignment_utilities as au
 from . import fitsTools as fT
 from .utils import get_polynorm_SP, my_linear_model, filtermed_image
 
-
 vector_plot_properties = {
     'headwidth': 4,
     'width': 0.003,
@@ -447,7 +446,7 @@ def _pop_norm_param_for_get_polynorm_SP(kwargs):
     polynorm_SP_kwargs = {}
     for key in default_polynorm_SP_params.keys():
         polynorm_SP_kwargs[key] = kwargs.pop(key,default_polynorm_SP_params[key])
-    return polynorm_SP_kwargs
+    return kwargs, polynorm_SP_kwargs
 
 prealign_titles = {
     'red-blue': 'Prealign-red, reference-cyan',
@@ -670,6 +669,30 @@ class AlignmentPlotting:
         return cls(data_prealign, data_reference, rotation, shifts,
                    header, v, u, rotation_fit)
 
+
+    def _polynorm(self, normalise, **kwargs):
+        kwargs, poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
+        if normalise:
+            prealign, aligned = self._run_polynorm(**poly_kwargs)
+        else:
+            prealign = self.prealign * 1.0
+            aligned =  self.aligned * 1.0
+
+        return prealign, aligned, kwargs
+
+    def _run_polynorm(self, **kwargs):
+        poly = get_polynorm_SP(self.aligned, self.reference, **kwargs)
+        prealign = my_linear_model(poly.beta, self.prealign)
+        aligned = my_linear_model(poly.beta, self.aligned)
+
+        return prealign, aligned
+
+    def _filtermed(self, img, filtermed):
+        if filtermed:
+            return filtermed_image(img)
+        else:
+            return img
+
     def red_blue_before_after(self, normalise=True, filtermed=True, **kwargs):
         """Plots the alignment before and after applying the offsets with
         red showing the prealign/align image and cyan showing the reference image
@@ -684,21 +707,8 @@ class AlignmentPlotting:
         ax1 : matplotlib.pyplot ax
             Matplotlib axis object for the aligned image
         """
-        if normalise:
-            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
-            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
-            prealign = my_linear_model(poly.beta, self.prealign)
-            aligned = my_linear_model(poly.beta, self.aligned)
-        else:
-            prealign = self.prealign * 1.0
-            aligned = self.aligned * 1.0
-
-        reference = self.reference
-        if filtermed:
-            prealign = filtermed_image(prealign)
-            aligned = filtermed_image(aligned)
-            reference = filtermed_image(reference)
-
+        prealign, aligned, kwargs = self._polynorm(normalise, **kwargs)
+        prealign, aligned, reference = [self._filtermed(img, filtermed) for img in [prealign, aligned, self.reference]]
 
         rgb_before = make_red_blue_overlay(prealign, reference)
         rgb_after = make_red_blue_overlay(aligned, reference)
@@ -742,20 +752,11 @@ class AlignmentPlotting:
         filtermed : bool
             If True will do a filter median after the normalisation of the images
             before comparing them
+        **kwargs : kwargs
+            Kwargs for adjusting the normalisation (if normalisation is used).
         """
-
-        if normalise:
-            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
-            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
-            aligned = my_linear_model(poly.beta, self.aligned)
-        else:
-            aligned = self.aligned * 1.0
-
-        reference = self.reference
-        if filtermed:
-            aligned = filtermed_image(aligned)
-            reference = filtermed_image(reference)
-
+        prealign, aligned, kwargs = self._polynorm(normalise, **kwargs)
+        aligned, reference = [self._filtermed(img, filtermed) for img in [aligned, self.reference]]
         after = reference - aligned
 
         fig, axs = initialise_fig_ax(fig_name='divcontours',
@@ -795,7 +796,8 @@ class AlignmentPlotting:
             If True will do a filter median after the normalisation of the images
             before comparing them
         **kwargs : kwargs
-            Kwargs for adjusting the imshow image.
+            Kwargs for adjusting the imshow image and for the normalisation
+            (if normalisation is used).
 
         Returns
         -------
@@ -805,21 +807,8 @@ class AlignmentPlotting:
             Matplotlib axis object for the aligned image
 
         """
-
-        if normalise:
-            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
-            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
-            prealign = my_linear_model(poly.beta, self.prealign)
-            aligned = my_linear_model(poly.beta, self.aligned)
-        else:
-            prealign = self.prealign * 1.0
-            aligned = self.aligned * 1.0
-
-        reference = self.reference
-        if filtermed:
-            prealign = filtermed_image(prealign)
-            aligned = filtermed_image(aligned)
-            reference = filtermed_image(reference)
+        prealign, aligned, kwargs = self._polynorm(normalise, **kwargs)
+        prealign, aligned, reference = [self._filtermed(img, filtermed) for img in [prealign, aligned, self.reference]]
 
         before = make_division(prealign, reference)
         after = make_division(aligned, reference)
@@ -837,7 +826,7 @@ class AlignmentPlotting:
         ax1 = plot_image(after, axs[1],
                          title=titles['after']['frac-diff']
                          % (*self.shifts, self.rotation),
-                         vmin=vmin, vmax=vmax)
+                         vmin=vmin, vmax=vmax, **kwargs)
 
         fT.remove_overlapping_tickers_for_horizontal_subplots(1, *axs)
         [fT.minor_tickers(ax) for ax in axs]
@@ -866,7 +855,8 @@ class AlignmentPlotting:
             If True will do a filter median after the normalisation of the images
             before comparing them
         **kwargs : kwargs
-            Kwargs for adjusting the imshow image.
+            Kwargs for adjusting the imshow image and for the normalisation
+            (if normalisation is used).
 
         Returns
         -------
@@ -876,21 +866,8 @@ class AlignmentPlotting:
             Matplotlib axis object for the aligned image
 
         """
-
-        if normalise:
-            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
-            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
-            prealign = my_linear_model(poly.beta, self.prealign)
-            aligned = my_linear_model(poly.beta, self.aligned)
-        else:
-            prealign = self.prealign * 1.0
-            aligned = self.aligned * 1.0
-
-        reference = self.reference
-        if filtermed:
-            prealign = filtermed_image(prealign)
-            aligned = filtermed_image(aligned)
-            reference = filtermed_image(reference)
+        prealign, aligned, kwargs = self._polynorm(normalise, **kwargs)
+        prealign, aligned, reference = [self._filtermed(img, filtermed) for img in [prealign, aligned, self.reference]]
 
         before = reference - prealign
         after = reference - aligned
@@ -908,7 +885,7 @@ class AlignmentPlotting:
         ax1 = plot_image(after, axs[1],
                          title=titles['after']['prealign-vs-align']
                          % (*self.shifts, self.rotation),
-                         vmin=vmin, vmax=vmax)
+                         vmin=vmin, vmax=vmax, **kwargs)
 
         fT.remove_overlapping_tickers_for_horizontal_subplots(1, *axs)
         [fT.minor_tickers(ax) for ax in axs]
@@ -1218,3 +1195,6 @@ def plot_vectors(v, u, y, x, ax=None):
 
     _ = ax.quiverkey(q, 0.873, 0.02, 1, r'=1 pixel', labelpos='E',
                      coordinates='figure', fontproperties={'size': 'medium'})
+
+if __name__ == "__main__":
+    pass

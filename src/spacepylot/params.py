@@ -20,3 +20,6 @@ pcc_params = {
         'high_sigma': 0.9 * 8
     },
 }
+
+if __name__ == "__main__":
+    pass

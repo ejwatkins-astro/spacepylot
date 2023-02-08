@@ -385,3 +385,6 @@ def minor_tickers(ax_object=None, **kwargs):
         ax_object.yaxis.set_minor_locator(AutoMinorLocator())
 
     scientific_tickers(ax_object, **kwargs)
+
+if __name__ == "__main__":
+    pass

@@ -938,3 +938,6 @@ class AlignOpticalFlow(AlignmentBase, AlignHomography):
                                           oflow_test=oflow_test, **kwargs)
         if self.verbose:
             print("\n Done")
+
+if __name__ == "__main__":
+    pass

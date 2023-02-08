@@ -12,6 +12,7 @@ __contact__ = "<liz@email"
 # General imports from numpy and copy
 import numpy as np
 import copy as cp
+from functools import lru_cache, wraps
 
 # ODR import
 from scipy.odr import ODR, Model, RealData
@@ -554,3 +555,6 @@ def filter_image_for_analysis(image, histogram_equalisation=False,
         image = hpf(image, **hpf_kwargs)
 
     return image
+
+if __name__ == "__main__":
+    pass

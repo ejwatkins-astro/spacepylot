@@ -127,8 +127,8 @@ def homography_on_grid_points(original_xy, transformed_xy,
     `self.reverse_order` in the method `homography_on_grid_points`
     to True
 
-    This function performs a fit to estimate the homography matrix that 
-    represents the grid transformation. Uses ransac 
+    This function performs a fit to estimate the homography matrix that
+    represents the grid transformation. Uses ransac
     to robustly eliminate vector outliers that
     something such as optical flow, or other feature extracting methods
     might output. The parameters are not currently changeable by the user
@@ -189,7 +189,7 @@ def homography_on_grid_points(original_xy, transformed_xy,
     return shifts, rotation, homography_matrix
 
 
-def get_shifts_from_homography_matrix(homography_matrix, 
+def get_shifts_from_homography_matrix(homography_matrix,
                                       reverse_order=False):
     """Extracting the shift from an homography matrix
 
@@ -204,7 +204,7 @@ def get_shifts_from_homography_matrix(homography_matrix,
     Returns
     -------
     shifts: [float, float]
-     
+
     """
     if homography_matrix is None:
         return [0., 0.]
@@ -228,12 +228,12 @@ def get_rotation_from_homography_matrix(homography_matrix):
     Returns
     -------
     rotation: float [in degrees]
-     
+
     """
     if homography_matrix is None:
         return 0.
     else:
-        return np.arctan2(homography_matrix[1, 0], 
+        return np.arctan2(homography_matrix[1, 0],
                           homography_matrix[1, 1])
 
 
@@ -322,7 +322,7 @@ def rotate_image(image, angle_degrees):
 
 
 def transform_image_wcs(image, header, rotation=0, yx_offset=None):
-    """Rotates and translate image using reproject keeping the 
+    """Rotates and translate image using reproject keeping the
     image size the same
 
     Parameters
@@ -621,3 +621,6 @@ class TranslationTransform(transform.ProjectiveTransform):
     @property
     def translation(self):
         return self.params[0:2, 2]
+
+if __name__ == "__main__":
+    pass
