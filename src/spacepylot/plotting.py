@@ -21,7 +21,7 @@ import colorcet as cc
 
 from . import alignment_utilities as au
 from . import fitsTools as fT
-from .utils import get_polynorm, my_linear_model, filtermed_image
+from .utils import get_polynorm_SP, my_linear_model, filtermed_image
 
 
 vector_plot_properties = {
@@ -210,14 +210,14 @@ def crop_data(data, border=10):
     """Crop a 2D data and return it cropped after a border
     has been removed (number of pixels) from each edge
     (borderx2 pixels are removed from each dimension)
-    
+
     Input
     -----
     data: 2d array
         Array which has the signal to be cropped
     border: int
         Number of pixels to be cropped at each edge
-    
+
     Returns
     -------
     cdata: 2d array
@@ -242,14 +242,14 @@ def crop_data(data, border=10):
 def get_flux_range(data, low=2, high=98, border=25):
     """Get the range of fluxes within the array
     by looking at percentiles.
-     
+
     Input
     -----
     data: 2d array
         Input array with signal to process
     low, high: two floats (10, 99)
         Percentiles to consider to filter
-    
+
     Returns
     -------
     lperc, hperc: 2 floats
@@ -269,7 +269,7 @@ def get_flux_range(data, low=2, high=98, border=25):
     return lperc, hperc
 
 
-def get_ax_contours(comp_image, ref_image, ax=None, title='', 
+def get_ax_contours(comp_image, ref_image, ax=None, title='',
                   **kwargs):
     """Show the contours for two images
 
@@ -300,11 +300,11 @@ def get_ax_contours(comp_image, ref_image, ax=None, title='',
         # Find the high and low levels
         lowlevel, highlevel = get_flux_range(comp_image)
         levels = np.linspace(np.log10(lowlevel),
-                             np.log10(highlevel), 
+                             np.log10(highlevel),
                              nlevels)
 
     # plotting the first contour - comparison image
-    compset = ax.contour(np.log10(comp_image), levels, colors='k', 
+    compset = ax.contour(np.log10(comp_image), levels, colors='k',
                          origin='lower', linestyles='solid')
     # plotting the second contour - reference image
     refset = ax.contour(np.log10(ref_image), levels=levels,
@@ -434,6 +434,20 @@ def plot_image(image, ax=None, title='', vmin_perc=5, vmax_perc=95,
     else:
         return ax
 
+default_polynorm_SP_params = {
+    'chunk_size':15,
+    'threshold1':0.,
+    'threshold2':0,
+    'percentiles':(0., 100.),
+    'sigclip':0,
+    'perc_if_fail':25
+}
+
+def _pop_norm_param_for_get_polynorm_SP(kwargs):
+    polynorm_SP_kwargs = {}
+    for key in default_polynorm_SP_params.keys():
+        polynorm_SP_kwargs[key] = kwargs.pop(key,default_polynorm_SP_params[key])
+    return polynorm_SP_kwargs
 
 prealign_titles = {
     'red-blue': 'Prealign-red, reference-cyan',
@@ -656,7 +670,7 @@ class AlignmentPlotting:
         return cls(data_prealign, data_reference, rotation, shifts,
                    header, v, u, rotation_fit)
 
-    def red_blue_before_after(self, normalise=True, filtermed=True):
+    def red_blue_before_after(self, normalise=True, filtermed=True, **kwargs):
         """Plots the alignment before and after applying the offsets with
         red showing the prealign/align image and cyan showing the reference image
         Image is well aligned if the aligned image is grey scale with no visible
@@ -671,7 +685,8 @@ class AlignmentPlotting:
             Matplotlib axis object for the aligned image
         """
         if normalise:
-            poly = get_polynorm(self.aligned, self.reference)
+            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
+            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
             prealign = my_linear_model(poly.beta, self.prealign)
             aligned = my_linear_model(poly.beta, self.aligned)
         else:
@@ -683,7 +698,7 @@ class AlignmentPlotting:
             prealign = filtermed_image(prealign)
             aligned = filtermed_image(aligned)
             reference = filtermed_image(reference)
-        
+
 
         rgb_before = make_red_blue_overlay(prealign, reference)
         rgb_after = make_red_blue_overlay(aligned, reference)
@@ -705,7 +720,7 @@ class AlignmentPlotting:
 
         return ax0, ax1
 
-    def plot_divcontours(self, nlevels=10, levels=None, percentage=5.0, filtermed=True, normalise=True):
+    def plot_divcontours(self, nlevels=10, levels=None, percentage=5.0, filtermed=True, normalise=True, **kwargs):
         """Plots the alignment after the offsets by dividing the input reference
         image and the aligned one, and showing the contours.
         Offsets should show up as negative/positive residuals systematically on
@@ -730,7 +745,8 @@ class AlignmentPlotting:
         """
 
         if normalise:
-            poly = get_polynorm(self.aligned, self.reference)
+            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
+            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
             aligned = my_linear_model(poly.beta, self.aligned)
         else:
             aligned = self.aligned * 1.0
@@ -741,16 +757,16 @@ class AlignmentPlotting:
             reference = filtermed_image(reference)
 
         after = reference - aligned
-        
+
         fig, axs = initialise_fig_ax(fig_name='divcontours',
                                      fig_size=self.fig_size,
                                      header=self.header,
                                      grid=[1, 2])
 
-        ax0 = get_ax_division(aligned, reference, ax=axs[0], 
+        ax0 = get_ax_division(aligned, reference, ax=axs[0],
                               title=titles['after']['division'],
                               percentage=percentage)
-        ax1 = get_ax_contours(aligned, reference, ax=axs[1], 
+        ax1 = get_ax_contours(aligned, reference, ax=axs[1],
                               title=titles['after']['contours'],
                               nlevels=nlevels, levels=levels)
 
@@ -791,7 +807,8 @@ class AlignmentPlotting:
         """
 
         if normalise:
-            poly = get_polynorm(self.aligned, self.reference)
+            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
+            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
             prealign = my_linear_model(poly.beta, self.prealign)
             aligned = my_linear_model(poly.beta, self.aligned)
         else:
@@ -861,7 +878,8 @@ class AlignmentPlotting:
         """
 
         if normalise:
-            poly = get_polynorm(self.aligned, self.reference)
+            poly_kwargs = _pop_norm_param_for_get_polynorm_SP(kwargs)
+            poly = get_polynorm_SP(self.aligned, self.reference, **poly_kwargs)
             prealign = my_linear_model(poly.beta, self.prealign)
             aligned = my_linear_model(poly.beta, self.aligned)
         else:

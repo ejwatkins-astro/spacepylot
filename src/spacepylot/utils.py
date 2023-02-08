@@ -195,7 +195,7 @@ def _split(size, num):
         Upper index position of a given length.
 
     """
-    lower, upper = int(size) * np.array([num, num+1])
+    lower, upper = np.int(size) * np.array([num, num+1])
     return lower, upper
 
 
@@ -210,7 +210,7 @@ def reject_outliers(data, m=3):
         Input factor which gives the number of standard deviations
         beyond which points will be rejected.
     """
-    return data[abs(data - np.median(data)) < m * np.std(data)]
+    return data[np.abs(data - np.nanmedian(data)) < m * np.nanstd(data)]
 
 
 def _remove_nonvalid_numbers(image):
@@ -276,30 +276,31 @@ def chunk_stats(list_arrays, chunk_size=15):
         for the given datasets analysed in chunks.
 
     """
+    # Check that all arrays have the same size
+    if not np.all([list_arrays[0].size == d.size for d in list_arrays[1:]]):
+        #Relic from pymusepipe. Changing to raise error
+        # upipe.print_error("Datasets are not of the same "
+        #                   "size in median_compare")
+        raise IndexError("Arrays given in `list_arrays` are not of the same"\
+                          "size in `chunk_stats`")
 
+    list_arrays = np.atleast_3d(list_arrays)
     narrays = len(list_arrays)
 
-    nchunk_x = np.int(list_arrays[0].shape[0] // chunk_size - 1)
-    nchunk_y = np.int(list_arrays[0].shape[1] // chunk_size - 1)
-    # Check that all arrays have the same size
-    med_array = np.zeros((narrays, nchunk_x * nchunk_y), dtype=np.float64)
-    std_array = np.zeros_like(med_array)
+    nchunk_x = np.int(list_arrays[0].shape[0] // chunk_size) #-1)
+    nchunk_y = np.int(list_arrays[0].shape[1] // chunk_size) #-1)
 
-    if not all([d.size for d in list_arrays]):
-        upipe.print_error("Datasets are not of the same "
-                          "size in median_compare")
-    else:
-        for i in range(0, nchunk_x):
-            for j in range(0, nchunk_y):
-                for k in range(narrays):
-                    # Taking the median of all arrays
-                    med_array[k, i * nchunk_y + j] = np.nanmedian(
-                        list_arrays[k][i * chunk_size:(i + 1) * chunk_size,
-                        j * chunk_size:(j + 1) * chunk_size])
-                    # Taking the std deviation of all arrays
-                    std_array[k, i * nchunk_y + j] = mad_std(
-                        list_arrays[k][i * chunk_size:(i + 1) * chunk_size,
-                        j * chunk_size:(j + 1) * chunk_size], ignore_nan=True)
+    grid_number = nchunk_x * nchunk_y
+
+    #Vectorised to remove 3-nest loop
+    arrays3d_chunk_ready = list_arrays[:,:nchunk_x*chunk_size,:nchunk_y*chunk_size]
+
+    grids_nchunkx  = np.array(np.split(arrays3d_chunk_ready, nchunk_x, axis=1))
+
+    grids_xy = np.array(np.split(np.array(grids_nchunkx), nchunk_y, axis=-1))
+
+    med_array = np.nanmedian(grids_xy, axis=(-2,-1)).T.reshape(narrays, grid_number)
+    std_array = mad_std(grids_xy, axis=(-2,-1), ignore_nan=True).T.reshape(narrays, grid_number)
 
     # Cleaning in case of Nan
     med_array = np.nan_to_num(med_array)
@@ -307,8 +308,9 @@ def chunk_stats(list_arrays, chunk_size=15):
     return med_array, std_array
 
 
-def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
-                        threshold2=0, percentiles=(0., 100.), sigclip=0):
+def get_polynorm_SP(array1, array2, chunk_size=15, threshold1=0.,
+                        threshold2=0, percentiles=(0., 100.), sigclip=0,
+                        perc_if_fail=25):
     """Find the normalisation factor between two arrays.
 
     Including the background and slope. This uses the function
@@ -331,6 +333,9 @@ def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
         Percentiles (Default value = [0., 100.])
     sigclip : float
         Sigma clipping factor (Default value = 0)
+    perc_if_fail : float, optional
+        If the (default) threshold of 0 is too high, a threshold
+        based of the percentiles (1-100) is used. The default is 25.
 
     Returns
     -------
@@ -342,16 +347,13 @@ def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
     med, std = chunk_stats([array1, array2], chunk_size=chunk_size)
 
     # Selecting where data is supposed to be good
-    if threshold1 is None:
-        threshold1 = 0.
-    if threshold2 is None:
-        threshold2 = 0.
-    pos = (med[0] > threshold1) & (std[0] > 0.) & (std[1] > 0.) & (med[1] > threshold2)
+    pos = _get_good_pos_for_polynorm([threshold1,threshold2], med, std, perc_if_fail)
 
     # Guess the slope from this selection
     guess_slope = 1.0
 
     # Doing the regression itself
+
     result = regress_odr(x=med[0][pos], y=med[1][pos], sx=std[0][pos],
                          sy=std[1][pos], beta0=[0., guess_slope],
                          percentiles=percentiles, sigclip=sigclip)
@@ -359,6 +361,45 @@ def get_polynorm(array1, array2, chunk_size=15, threshold1=0.,
     result.std = std
     result.selection = pos
     return result
+
+def _get_good_pos_for_polynorm(thresholds, med, std, perc_if_fail=25):
+    """Applies the threshold for median-like filtered chunks. If None, first
+    assume all good values are > 0. If no chunks are >0, a percentage
+    is chosen as the threshold value. The default is 25 for this
+    percentage.
+
+    Parameters
+    ----------
+    thresholds : arraylike
+        Thresholds to apply to each chunk to determine if it is good.
+    med : numpy.ndarray
+        Median values from a median-like filtered image separated
+        into chunks.
+    std : numpy.ndarray
+        standard deviation values from a median-like filtered image separated
+        into chunks.
+    perc_if_fail : float, optional
+        If the (default) threshold of 0 is too high, a threshold
+        based of the percentiles (1-100) is used. The default is 25.
+
+    Returns
+    -------
+    pos_good : numpy.ndarray of bool
+        Boolian mask containing True where chunks are good and above
+        the threshold value.
+
+    """
+    pos_good = np.ones(len(med[0]), dtype=bool)
+    for i in range(len(med)):
+        current_threshold = thresholds[i] if thresholds[i] is not None else 0
+        current_pos = (med[i] >= current_threshold) & (std[i] >= 0.)
+        if len(current_pos) == 0:
+            current_threshold = np.nanpercentile(med[i], perc_if_fail)
+            current_pos = (med[i] > current_threshold) & (std[i] >= 0.)
+
+        pos_good = pos_good & current_pos
+
+    return pos_good
 
 
 def my_linear_model(B, x):
@@ -406,7 +447,7 @@ def regress_odr(x, y, sx, sy, beta0=(0., 1.),
     # Percentiles
     xrav = x.ravel()
     if len(xrav) > 0:
-        percentiles = np.percentile(xrav, percentiles)
+        percentiles = np.nanpercentile(xrav, percentiles)
         sel = (xrav >= percentiles[0]) & (xrav <= percentiles[1])
     else:
         sel = np.abs(xrav) > 0
