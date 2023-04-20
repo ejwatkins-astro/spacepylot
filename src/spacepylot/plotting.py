@@ -438,8 +438,7 @@ default_polynorm_SP_params = {
     'threshold1':0.,
     'threshold2':0,
     'percentiles':(0., 100.),
-    'sigclip':0,
-    'perc_if_fail':25
+    'sigclip':0
 }
 
 def _pop_norm_param_for_get_polynorm_SP(kwargs):
