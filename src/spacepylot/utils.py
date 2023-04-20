@@ -308,22 +308,17 @@ def chunk_stats(list_arrays, chunk_size=15):
     std_array = np.nan_to_num(std_array)
     return med_array, std_array
 
-
 def get_polynorm_SP(array1, array2, chunk_size=15, threshold1=0.,
-                        threshold2=0, percentiles=(0., 100.), sigclip=0,
-                        perc_if_fail=25):
+                        threshold2=0, percentiles=(0., 100.), sigclip=0):
     """Find the normalisation factor between two arrays.
-
     Including the background and slope. This uses the function
     regress_odr which is included in align_pipe.py and itself
     makes use of ODR in scipy.odr.ODR.
-
     Parameters
     ----------
     array1 : 2D np.array
     array2 : 2D np.array
         2 arrays (2D) of identical shapes
-
     chunk_size : int
         Default value = 15
     threshold1 : float
@@ -334,10 +329,6 @@ def get_polynorm_SP(array1, array2, chunk_size=15, threshold1=0.,
         Percentiles (Default value = [0., 100.])
     sigclip : float
         Sigma clipping factor (Default value = 0)
-    perc_if_fail : float, optional
-        If the (default) threshold of 0 is too high, a threshold
-        based of the percentiles (1-100) is used. The default is 25.
-
     Returns
     -------
     result: python structure
@@ -348,13 +339,16 @@ def get_polynorm_SP(array1, array2, chunk_size=15, threshold1=0.,
     med, std = chunk_stats([array1, array2], chunk_size=chunk_size)
 
     # Selecting where data is supposed to be good
-    pos = _get_good_pos_for_polynorm([threshold1,threshold2], med, std, perc_if_fail)
+    if threshold1 is None:
+        threshold1 = 0.
+    if threshold2 is None:
+        threshold2 = 0.
+    pos = (med[0] > threshold1) & (std[0] > 0.) & (std[1] > 0.) & (med[1] > threshold2)
 
     # Guess the slope from this selection
     guess_slope = 1.0
 
     # Doing the regression itself
-
     result = regress_odr(x=med[0][pos], y=med[1][pos], sx=std[0][pos],
                          sy=std[1][pos], beta0=[0., guess_slope],
                          percentiles=percentiles, sigclip=sigclip)
@@ -362,46 +356,6 @@ def get_polynorm_SP(array1, array2, chunk_size=15, threshold1=0.,
     result.std = std
     result.selection = pos
     return result
-
-def _get_good_pos_for_polynorm(thresholds, med, std, perc_if_fail=25):
-    """Applies the threshold for median-like filtered chunks. If None, first
-    assume all good values are > 0. If no chunks are >0, a percentage
-    is chosen as the threshold value. The default is 25 for this
-    percentage.
-
-    Parameters
-    ----------
-    thresholds : arraylike
-        Thresholds to apply to each chunk to determine if it is good.
-    med : numpy.ndarray
-        Median values from a median-like filtered image separated
-        into chunks.
-    std : numpy.ndarray
-        standard deviation values from a median-like filtered image separated
-        into chunks.
-    perc_if_fail : float, optional
-        If the (default) threshold of 0 is too high, a threshold
-        based of the percentiles (1-100) is used. The default is 25.
-
-    Returns
-    -------
-    pos_good : numpy.ndarray of bool
-        Boolian mask containing True where chunks are good and above
-        the threshold value.
-
-    """
-    pos_good = np.ones(len(med[0]), dtype=bool)
-    for i in range(len(med)):
-        current_threshold = thresholds[i] if thresholds[i] is not None else 0
-        current_pos = (med[i] >= current_threshold) & (std[i] >= 0.)
-        if len(current_pos) == 0:
-            current_threshold = np.nanpercentile(med[i], perc_if_fail)
-            current_pos = (med[i] > current_threshold) & (std[i] >= 0.)
-
-        pos_good = pos_good & current_pos
-
-    return pos_good
-
 
 def my_linear_model(B, x):
     """Linear function for the regression.
