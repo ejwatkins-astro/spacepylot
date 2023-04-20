@@ -288,8 +288,8 @@ def chunk_stats(list_arrays, chunk_size=15):
     list_arrays = np.atleast_3d(list_arrays)
     narrays = len(list_arrays)
 
-    nchunk_x = np.int64(list_arrays[0].shape[0] // chunk_size) #-1)
-    nchunk_y = np.int64(list_arrays[0].shape[1] // chunk_size) #-1)
+    nchunk_x = np.int32(list_arrays[0].shape[0] // chunk_size) #-1)
+    nchunk_y = np.int32(list_arrays[0].shape[1] // chunk_size) #-1)
 
     grid_number = nchunk_x * nchunk_y
 
