@@ -196,7 +196,7 @@ def _split(size, num):
         Upper index position of a given length.
 
     """
-    lower, upper = np.int(size) * np.array([num, num+1])
+    lower, upper = np.int32(size) * np.array([num, num+1])
     return lower, upper
 
 
